@@ -1,0 +1,82 @@
+name: release
+
+# Cut a release by pushing a tag:  git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a release mid-flight
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test & publish release
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: write   # create the GitHub Release and upload the zip
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Shares the cache namespace with build.yml.
+      - name: Cache SwiftPM
+        uses: actions/cache@v5
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            swiftpm-${{ runner.os }}-
+
+      - name: Build (release)
+        run: make build
+
+      - name: Test
+        run: swift test
+
+      - name: Assemble and ad-hoc sign app bundle
+        run: make sign
+
+      - name: Zip app bundle (versioned)
+        run: ditto -c -k --keepParent dist/TeamsToObsidian.app "dist/TeamsToObsidian-${{ github.ref_name }}.app.zip"
+
+      # Base64-encoded sha256 of the release asset, consumed by the SLSA generator.
+      - name: Compute artifact digest
+        id: hash
+        run: echo "hashes=$(cd dist && shasum -a 256 "TeamsToObsidian-${{ github.ref_name }}.app.zip" | base64)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release and upload asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "TeamsToObsidian $TAG" --generate-notes
+          gh release upload "$TAG" "dist/TeamsToObsidian-$TAG.app.zip" --clobber
+
+  # SLSA Build L3 provenance, attached permanently to the release
+  # (upload-assets) so artifacts stay verifiable after CI retention expires:
+  #   slsa-verifier verify-artifact TeamsToObsidian-<tag>.app.zip \
+  #     --provenance-path TeamsToObsidian-<tag>.app.zip.intoto.jsonl \
+  #     --source-uri github.com/boydj/teams-to-obsidian \
+  #     --source-tag <tag>
+  provenance:
+    name: SLSA provenance
+    needs: [build]
+    permissions:
+      actions: read      # detect the GitHub Actions environment
+      id-token: write    # sign the provenance via Sigstore
+      contents: write    # upload the provenance to the release
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.build.outputs.hashes }}
+      provenance-name: TeamsToObsidian-${{ github.ref_name }}.app.zip.intoto.jsonl
+      upload-assets: true
+      private-repository: true   # no-op while public; required ack if ever private
