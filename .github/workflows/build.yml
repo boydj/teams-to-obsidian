@@ -1,0 +1,51 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test (macOS)
+    # Apple Silicon runner; the project targets macOS 14.4+.
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # aws-sdk-swift is a large dependency tree — caching .build and the
+      # SwiftPM cache cuts rebuilds from ~20 minutes to ~2.
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            swiftpm-${{ runner.os }}-
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build (release)
+        run: make build
+
+      - name: Test
+        run: swift test
+
+      - name: Assemble and ad-hoc sign app bundle
+        run: make sign
+
+      - name: Zip app bundle
+        run: ditto -c -k --keepParent dist/TeamsToObsidian.app dist/TeamsToObsidian.app.zip
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeamsToObsidian.app
+          path: dist/TeamsToObsidian.app.zip
