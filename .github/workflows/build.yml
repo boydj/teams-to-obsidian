@@ -70,14 +70,17 @@ jobs:
   provenance:
     name: SLSA provenance
     needs: [build]
+    # Callers must grant everything the reusable workflow's jobs declare —
+    # including contents: write for its (unused here) release-upload path.
     permissions:
-      actions: read      # read the workflow path
+      actions: read      # detect the GitHub Actions environment
       id-token: write    # sign the provenance via Sigstore
-      contents: read
+      contents: write
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build.outputs.hashes }}
       provenance-name: TeamsToObsidian.app.zip.intoto.jsonl
-      # This repo is private: signing publishes the repo NAME (not contents)
-      # to the public Rekor transparency log. This flag is the explicit opt-in.
+      # No-op while the repo is public; if it ever goes private again, this
+      # stays the required opt-in (signing puts the repo NAME in the public
+      # Rekor transparency log).
       private-repository: true
