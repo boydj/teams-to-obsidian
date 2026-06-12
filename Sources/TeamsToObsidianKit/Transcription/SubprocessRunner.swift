@@ -63,7 +63,8 @@ enum SubprocessRunner {
         }
     }
 
-    private final class DataCollector {
+    // Lock-protected; safe to touch from the pipe, termination, and timeout callbacks.
+    private final class DataCollector: @unchecked Sendable {
         private let lock = NSLock()
         private var data = Data()
 
@@ -78,7 +79,8 @@ enum SubprocessRunner {
         }
     }
 
-    private final class RunState {
+    // Lock-protected; safe to touch from the pipe, termination, and timeout callbacks.
+    private final class RunState: @unchecked Sendable {
         private let lock = NSLock()
         private var continuation: CheckedContinuation<SubprocessResult, Error>?
         private var timedOut = false

@@ -117,7 +117,7 @@ final class StatusItemController: NSObject {
 
     @objc private func openConfig() {
         if !FileManager.default.fileExists(atPath: Paths.configFile.path) {
-            try? ConfigLoader.writeDefault(force: false)
+            _ = try? ConfigLoader.writeDefault(force: false)
         }
         NSWorkspace.shared.open(Paths.configFile)
     }

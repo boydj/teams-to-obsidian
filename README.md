@@ -180,10 +180,9 @@ are discarded by design (`detection.minMeetingDurationSeconds`).
   Summarization, Pipeline, Output, App, CLI). The executable target is a shim.
 - `make test` runs unit tests for the pure logic (merger, parsers, renderer,
   config, WAV writer).
-- One Swift symbol could not be verified without a Mac: the `system:` parameter
-  on `ConverseInput` (the Converse REST API has it; only the Swift spelling is
-  unconfirmed). If the first build errors there, either fix the label per your
-  aws-sdk-swift version or fold the system prompt into the user message in
-  `BedrockSummarizer.converse`.
-- For reproducible builds, pin `aws-sdk-swift` to an exact version in
-  `Package.swift` once you've built successfully.
+- `aws-sdk-swift` is pinned to an exact version in `Package.swift`: the Bedrock
+  client uses `BedrockRuntimeClientConfiguration`, which that version marks
+  deprecated (in favor of `BedrockRuntimeClientConfig`) but still ships.
+  Migrate the two call sites in `BedrockSummarizer.makeClient` when bumping the
+  dependency. Commit `Package.resolved` after a successful build for fully
+  reproducible dependency resolution.

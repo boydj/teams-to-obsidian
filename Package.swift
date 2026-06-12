@@ -12,7 +12,9 @@ let package = Package(
         .executable(name: "teams-to-obsidian", targets: ["teams-to-obsidian"])
     ],
     dependencies: [
-        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "1.0.0"),
+        // Pinned exact: BedrockSummarizer uses APIs verified at this version
+        // (incl. the deprecated-but-working BedrockRuntimeClientConfiguration).
+        .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "1.7.18"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     ],
     targets: [

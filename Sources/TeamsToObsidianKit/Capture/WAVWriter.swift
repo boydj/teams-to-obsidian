@@ -103,6 +103,7 @@ final class WAVWriter {
 
 extension Data {
     mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
-        withUnsafeBytes(of: value.littleEndian) { append(contentsOf: $0) }
+        // Qualified: inside Data, the unqualified name resolves to the instance method.
+        Swift.withUnsafeBytes(of: value.littleEndian) { append(contentsOf: $0) }
     }
 }

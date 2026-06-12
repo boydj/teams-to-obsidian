@@ -55,7 +55,7 @@ final class ProcessTapRecorder {
         switch mode {
         case .processes(let ids):
             guard !ids.isEmpty else { throw CoreAudioError.failure("No processes to tap") }
-            description = CATapDescription(monoMixdownOfProcesses: ids.map { NSNumber(value: $0) })
+            description = CATapDescription(monoMixdownOfProcesses: ids)
         case .globalExcludingNone:
             description = CATapDescription(monoGlobalTapButExcludeProcesses: [])
         }

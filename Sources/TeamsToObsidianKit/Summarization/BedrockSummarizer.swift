@@ -33,9 +33,12 @@ final class BedrockSummarizer: Summarizer {
 
     private func makeClient() async throws -> BedrockRuntimeClient {
         if let client { return client }
+        // BedrockRuntimeClientConfiguration is deprecated in favor of
+        // BedrockRuntimeClientConfig but present and working at the pinned
+        // aws-sdk-swift version; migrate when bumping the dependency.
         let configuration: BedrockRuntimeClient.BedrockRuntimeClientConfiguration
         if let profile = config.profile, !profile.isEmpty {
-            let resolver = try ProfileAWSCredentialIdentityResolver(profileName: profile)
+            let resolver = ProfileAWSCredentialIdentityResolver(profileName: profile)
             configuration = try await BedrockRuntimeClient.BedrockRuntimeClientConfiguration(
                 awsCredentialIdentityResolver: resolver,
                 region: config.region)
