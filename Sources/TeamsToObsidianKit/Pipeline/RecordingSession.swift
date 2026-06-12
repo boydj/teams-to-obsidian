@@ -13,6 +13,10 @@ struct SessionMeta: Codable {
     /// Per-channel recording start skew relative to startedAt, applied when merging.
     var micStartOffsetMS: Int?
     var systemStartOffsetMS: Int?
+    /// Context captured at meeting start (calendar event or Teams window title).
+    var eventTitle: String?
+    var attendees: [String]?
+    var organizer: String?
 }
 
 /// One directory per meeting under the recordings dir, holding mic.wav,
@@ -48,7 +52,8 @@ final class RecordingSession {
             directory: dir,
             meta: SessionMeta(startedAt: startedAt, endedAt: nil, state: .recording,
                               partial: partial, noteTitle: nil,
-                              micStartOffsetMS: nil, systemStartOffsetMS: nil))
+                              micStartOffsetMS: nil, systemStartOffsetMS: nil,
+                              eventTitle: nil, attendees: nil, organizer: nil))
         session.persistMeta()
         return session
     }
@@ -75,7 +80,8 @@ final class RecordingSession {
             directory: directory,
             meta: SessionMeta(startedAt: started, endedAt: nil, state: .recording,
                               partial: false, noteTitle: nil,
-                              micStartOffsetMS: nil, systemStartOffsetMS: nil))
+                              micStartOffsetMS: nil, systemStartOffsetMS: nil,
+                              eventTitle: nil, attendees: nil, organizer: nil))
     }
 
     func update(_ mutate: (inout SessionMeta) -> Void) {

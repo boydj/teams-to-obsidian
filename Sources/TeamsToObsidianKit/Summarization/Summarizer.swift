@@ -26,7 +26,8 @@ enum SummarizerError: Error, LocalizedError {
 
 protocol Summarizer {
     var name: String { get }
-    func summarize(transcript: String, meetingDate: Date, durationSeconds: Int) async throws -> MeetingSummary
+    func summarize(transcript: String, meetingDate: Date, durationSeconds: Int,
+                   context: MeetingContext?) async throws -> MeetingSummary
     /// Cheap connectivity round-trip; returns the model's reply text.
     func healthCheck() async throws -> String
 }

@@ -3,6 +3,11 @@
     "captureMode": "processTap",
     "micVoiceProcessing": false
   },
+  "context": {
+    "calendarNames": [],
+    "useCalendar": true,
+    "useWindowTitle": true
+  },
   "detection": {
     "bundleIDPrefixes": ["com.microsoft.teams2"],
     "endDebounceSeconds": 10,
@@ -10,6 +15,9 @@
     "pollIntervalSeconds": 2,
     "startDebounceSeconds": 3,
     "useOutputSignal": false
+  },
+  "notifications": {
+    "enabled": true
   },
   "recording": {
     "directory": "~/Library/Application Support/teams-to-obsidian/recordings",
@@ -31,7 +39,8 @@
   "vault": {
     "filenameTemplate": "{date} {title}",
     "notesFolder": "Meetings",
-    "path": "~/Documents/ObsidianVault"
+    "path": "~/Documents/ObsidianVault",
+    "taskTag": ""
   },
   "whisper": {
     "cliPath": "~/.local/share/teams-to-obsidian/whisper.cpp/build/bin/whisper-cli",

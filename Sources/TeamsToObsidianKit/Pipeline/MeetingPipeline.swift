@@ -119,6 +119,10 @@ final class MeetingPipeline {
         }
 
         let transcript = TranscriptMerger.merge(me: meSegments, them: themSegments)
+        let context = MeetingContext(
+            title: meta.eventTitle,
+            attendees: meta.attendees ?? [],
+            organizer: meta.organizer)
 
         // 4. Summarize (one retry; degrades to a transcript-only note on failure).
         stateSink(.summarizing)
@@ -131,7 +135,12 @@ final class MeetingPipeline {
                 warning: nil)
         } else {
             summary = await summarizeWithRetry(
-                transcript: transcript, startedAt: startedAt, durationSeconds: durationSeconds)
+                transcript: transcript, startedAt: startedAt,
+                durationSeconds: durationSeconds, context: context)
+        }
+        // Title preference: explicit override > calendar/window title > AI title.
+        if let eventTitle = meta.eventTitle, !eventTitle.isEmpty {
+            summary.title = eventTitle
         }
         if let titleOverride, !titleOverride.isEmpty {
             summary.title = titleOverride
@@ -142,6 +151,8 @@ final class MeetingPipeline {
         let markdown = MarkdownRenderer.render(
             summary: summary, transcript: transcript, startedAt: startedAt,
             durationSeconds: durationSeconds, partial: meta.partial,
+            attendees: meta.attendees ?? [], organizer: meta.organizer,
+            taskTag: config.vault.taskTag,
             extraWarnings: channelWarnings)
         do {
             let noteURL = try VaultWriter.write(
@@ -180,17 +191,20 @@ final class MeetingPipeline {
         }
     }
 
-    private func summarizeWithRetry(transcript: String, startedAt: Date, durationSeconds: Int) async -> MeetingSummary {
+    private func summarizeWithRetry(transcript: String, startedAt: Date,
+                                    durationSeconds: Int, context: MeetingContext?) async -> MeetingSummary {
         do {
             let summarizer = try SummarizerFactory.make(config: config.summarizer)
             do {
                 return try await summarizer.summarize(
-                    transcript: transcript, meetingDate: startedAt, durationSeconds: durationSeconds)
+                    transcript: transcript, meetingDate: startedAt,
+                    durationSeconds: durationSeconds, context: context)
             } catch {
                 Log.error("Summarization failed, retrying once: \(describeError(error))")
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 return try await summarizer.summarize(
-                    transcript: transcript, meetingDate: startedAt, durationSeconds: durationSeconds)
+                    transcript: transcript, meetingDate: startedAt,
+                    durationSeconds: durationSeconds, context: context)
             }
         } catch {
             // Never lose the transcript: degrade to a transcript-only note.

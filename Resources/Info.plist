@@ -28,5 +28,7 @@
 	<string>TeamsToObsidian records your side of Teams meetings for local transcription. Audio never leaves this Mac.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>TeamsToObsidian records Teams meeting audio for local transcription. Audio never leaves this Mac.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>TeamsToObsidian matches recordings to your calendar events to title notes and list attendees. Calendar data never leaves this Mac.</string>
 </dict>
 </plist>

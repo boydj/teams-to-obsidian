@@ -14,6 +14,9 @@ struct PromptBuilder {
     labeled "Me" were spoken by the local user; segments labeled "Them" were spoken \
     by other participants (possibly several different people).
 
+    When a participant list is provided, use those real names in the summary and \
+    action items instead of "Them" wherever the speaker can be identified.
+
     Respond with ONLY a fenced JSON code block (```json ... ```) containing an object \
     with exactly these keys:
     - "title": short, specific meeting title (max 60 characters; no date, no quotes or slashes)
@@ -39,10 +42,25 @@ struct PromptBuilder {
         return Self.defaultSystemPrompt
     }
 
-    func userPrompt(transcript: String, meetingDate: Date, durationSeconds: Int) -> String {
+    func userPrompt(transcript: String, meetingDate: Date, durationSeconds: Int,
+                    context: MeetingContext? = nil) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
+
+        var header = "Meeting date: \(formatter.string(from: meetingDate))\n"
+        header += "Duration: \(max(1, durationSeconds / 60)) minutes\n"
+        if let context {
+            if let title = context.title {
+                header += "Meeting title: \(title)\n"
+            }
+            if !context.attendees.isEmpty {
+                header += "Participants: \(context.attendees.joined(separator: ", "))\n"
+            }
+            if let organizer = context.organizer {
+                header += "Organizer: \(organizer)\n"
+            }
+        }
 
         var body = transcript
         if body.count > maxTranscriptChars {
@@ -50,9 +68,7 @@ struct PromptBuilder {
             body = "[transcript truncated — earliest part omitted]\n" + String(body.suffix(maxTranscriptChars))
         }
         return """
-        Meeting date: \(formatter.string(from: meetingDate))
-        Duration: \(max(1, durationSeconds / 60)) minutes
-
+        \(header)
         Transcript:
         \(body)
         """

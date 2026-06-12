@@ -10,6 +10,9 @@ struct Config: Codable {
         var notesFolder: String = "Meetings"
         /// Note filename. {date} = "yyyy-MM-dd HHmm", {title} = sanitized AI title.
         var filenameTemplate: String = "{date} {title}"
+        /// Appended to every action item, e.g. "#task" for the Obsidian Tasks
+        /// plugin's global filter. Empty = plain "- [ ]" checkboxes.
+        var taskTag: String = ""
 
         init() {}
         init(from decoder: Decoder) throws {
@@ -17,6 +20,7 @@ struct Config: Codable {
             path = c.decodeOr(String.self, .path, path)
             notesFolder = c.decodeOr(String.self, .notesFolder, notesFolder)
             filenameTemplate = c.decodeOr(String.self, .filenameTemplate, filenameTemplate)
+            taskTag = c.decodeOr(String.self, .taskTag, taskTag)
         }
     }
 
@@ -139,6 +143,39 @@ struct Config: Codable {
         }
     }
 
+    struct Context: Codable {
+        /// Match the recording to a calendar event (EventKit) for the real
+        /// title, attendee names, and organizer. Outlook/Microsoft 365
+        /// calendars work when the account is added in System Settings →
+        /// Internet Accounts with Calendars enabled (read locally; the app
+        /// never calls Microsoft's APIs). Needs the Calendar permission.
+        var useCalendar: Bool = true
+        /// Restrict the calendar lookup to these calendar names. Empty = all.
+        var calendarNames: [String] = []
+        /// Fall back to the Teams meeting window title (needs the
+        /// Accessibility permission).
+        var useWindowTitle: Bool = true
+
+        init() {}
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            useCalendar = c.decodeOr(Bool.self, .useCalendar, useCalendar)
+            calendarNames = c.decodeOr([String].self, .calendarNames, calendarNames)
+            useWindowTitle = c.decodeOr(Bool.self, .useWindowTitle, useWindowTitle)
+        }
+    }
+
+    struct Notifications: Codable {
+        /// Post a "note ready" notification that opens the note in Obsidian.
+        var enabled: Bool = true
+
+        init() {}
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            enabled = c.decodeOr(Bool.self, .enabled, enabled)
+        }
+    }
+
     struct Capture: Codable {
         /// "processTap" taps only the Teams processes (preferred).
         /// "globalExclude" taps ALL system audio (fallback if the Teams tap records silence).
@@ -161,6 +198,8 @@ struct Config: Codable {
     var detection: Detection = Detection()
     var recording: Recording = Recording()
     var capture: Capture = Capture()
+    var context: Context = Context()
+    var notifications: Notifications = Notifications()
 
     init() {}
     init(from decoder: Decoder) throws {
@@ -171,6 +210,8 @@ struct Config: Codable {
         detection = c.decodeOr(Detection.self, .detection, detection)
         recording = c.decodeOr(Recording.self, .recording, recording)
         capture = c.decodeOr(Capture.self, .capture, capture)
+        context = c.decodeOr(Context.self, .context, context)
+        notifications = c.decodeOr(Notifications.self, .notifications, notifications)
     }
 }
 

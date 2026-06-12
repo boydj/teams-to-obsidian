@@ -87,7 +87,7 @@ final class StatusItemController: NSObject {
     @objc private func stopNow() { controller.stopAndProcessNow() }
 
     @objc private func openLastNote() {
-        if let url = controller.lastNoteURL { NSWorkspace.shared.open(url) }
+        if let url = controller.lastNoteURL { NoteNotifier.openNote(at: url) }
     }
 
     @objc private func reprocessLast() { controller.reprocessLastRecording() }

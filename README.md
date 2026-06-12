@@ -59,9 +59,24 @@ open /Applications/TeamsToObsidian.app
 
 Click the menu bar icon → **Request Permissions…** and approve:
 
-1. **Microphone** (Privacy & Security → Microphone)
+1. **Microphone** (Privacy & Security → Microphone) — required
 2. **System Audio Recording Only** (Privacy & Security → Screen & System Audio
-   Recording) — this is what lets the app record Teams' output.
+   Recording) — required; this is what lets the app record Teams' output.
+3. **Calendar** — optional; matches recordings to your calendar event so notes
+   get the real meeting title and attendee names (which the summarizer uses to
+   put names on action items).
+4. **Accessibility** — optional; reads the Teams meeting window title as a
+   fallback when no calendar event matches.
+5. **Notifications** — optional; a "note ready" notification that opens the
+   note in Obsidian when clicked.
+
+> **Outlook / Microsoft 365 calendars:** add the account in **System Settings
+> → Internet Accounts** with Calendars enabled. macOS syncs it locally and the
+> app reads that local copy via EventKit — it never calls Microsoft's servers
+> (Graph would violate the no-external-calls rule, and the Outlook app's
+> internal database is undocumented). Verify it works by checking that your
+> Outlook events appear in Apple's Calendar app. The window-title fallback
+> works regardless of calendar setup.
 
 Finally, enable **Start at Login** from the menu. Done — join a Teams meeting
 and a note appears in your vault a few minutes after you leave.
@@ -80,6 +95,11 @@ optional — missing keys keep their defaults):
 | `vault.path` | `~/Documents/ObsidianVault` | Your Obsidian vault folder — **edit this** |
 | `vault.notesFolder` | `Meetings` | Folder inside the vault for notes |
 | `vault.filenameTemplate` | `{date} {title}` | `{date}` = `yyyy-MM-dd HHmm` |
+| `vault.taskTag` | _(empty)_ | Appended to action items, e.g. `#task` for the Obsidian Tasks plugin |
+| `context.useCalendar` | `true` | Pull title/attendees/organizer from the matching calendar event (EventKit) |
+| `context.calendarNames` | _(all)_ | Restrict the calendar lookup to these calendar names |
+| `context.useWindowTitle` | `true` | Fall back to the Teams meeting window title (Accessibility) |
+| `notifications.enabled` | `true` | "Note ready" notification; clicking opens the note in Obsidian |
 | `whisper.cliPath` / `modelPath` | setup-whisper.sh locations | whisper-cli binary and ggml model |
 | `whisper.language` | `en` | Whisper language, or `auto` |
 | `summarizer.backend` | `bedrock` | `bedrock` or `ollama` |

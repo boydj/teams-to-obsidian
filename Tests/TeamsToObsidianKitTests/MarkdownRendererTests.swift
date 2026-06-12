@@ -40,6 +40,19 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(md.contains("## Transcript"))
     }
 
+    func testAttendeesOrganizerAndTaskTag() {
+        let summary = MeetingSummary(
+            title: "T", summary: "s",
+            keyPoints: [], actionItems: ["send report"], decisions: [], warning: nil)
+        let md = MarkdownRenderer.render(
+            summary: summary, transcript: "x", startedAt: Date(), durationSeconds: 60,
+            partial: false,
+            attendees: ["Ann A", "Bob \"B\""], organizer: "Ann A", taskTag: "#task")
+        XCTAssertTrue(md.contains("organizer: \"Ann A\""))
+        XCTAssertTrue(md.contains("attendees: [\"Ann A\", \"Bob \\\"B\\\"\"]"))
+        XCTAssertTrue(md.contains("- [ ] send report #task"))
+    }
+
     func testEmptyTranscriptPlaceholder() {
         let summary = MeetingSummary(
             title: "T", summary: "s", keyPoints: [], actionItems: [], decisions: [], warning: nil)

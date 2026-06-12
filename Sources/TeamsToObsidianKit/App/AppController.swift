@@ -157,8 +157,34 @@ final class AppController {
             store.set(.recording(session.meta.startedAt))
             startWatchdog(for: recording)
             installDeviceChangeObserver(for: recording)
+            captureContext(for: recording)
         } catch {
             store.set(.error("Could not start recording: \(describeError(error))"))
+        }
+    }
+
+    /// Gathers the calendar event / Teams window title for note enrichment.
+    /// The meeting window title can appear a few seconds after join, so a
+    /// second look happens 15s in if the first found nothing.
+    private func captureContext(for recording: ActiveRecording) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let context = await MeetingContextProvider.capture(config: self.config.context)
+            if self.active === recording, !context.isEmpty {
+                recording.session.update { m in
+                    if m.eventTitle == nil { m.eventTitle = context.title }
+                    if !context.attendees.isEmpty { m.attendees = context.attendees }
+                    if let organizer = context.organizer { m.organizer = organizer }
+                }
+            }
+            guard context.title == nil, self.config.context.useWindowTitle else { return }
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            guard self.active === recording else { return }
+            if let title = MeetingContextProvider.teamsWindowTitle() {
+                recording.session.update { m in
+                    if m.eventTitle == nil { m.eventTitle = title }
+                }
+            }
         }
     }
 
@@ -273,6 +299,7 @@ final class AppController {
             if !recordingNow { store.set(.summarizing) }
         case .done(let url):
             lastNoteURL = url
+            NoteNotifier.shared.notifyNoteReady(noteURL: url, enabled: config.notifications.enabled)
             if !recordingNow { store.set(.idle) }
         case .failed(let message):
             if !recordingNow { store.set(.error(message)) }

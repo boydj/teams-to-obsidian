@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NoteNotifier.shared.setup()
         let controller = AppController(config: config, configProblem: configProblem)
         self.controller = controller
         self.statusController = StatusItemController(controller: controller)

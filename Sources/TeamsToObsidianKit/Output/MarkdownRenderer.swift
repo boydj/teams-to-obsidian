@@ -8,6 +8,9 @@ enum MarkdownRenderer {
                        startedAt: Date,
                        durationSeconds: Int,
                        partial: Bool,
+                       attendees: [String] = [],
+                       organizer: String? = nil,
+                       taskTag: String = "",
                        extraWarnings: [String] = []) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -21,6 +24,12 @@ enum MarkdownRenderer {
         lines.append("durationMinutes: \(max(1, durationSeconds / 60))")
         lines.append("type: meeting")
         lines.append("tags: [meeting, teams]")
+        if let organizer, !organizer.isEmpty {
+            lines.append("organizer: \(yamlString(organizer))")
+        }
+        if !attendees.isEmpty {
+            lines.append("attendees: [\(attendees.map(yamlString).joined(separator: ", "))]")
+        }
         if partial {
             lines.append("partial: true")
         }
@@ -51,10 +60,11 @@ enum MarkdownRenderer {
             lines.append("")
         }
         if !summary.actionItems.isEmpty {
+            let suffix = taskTag.isEmpty ? "" : " \(taskTag)"
             lines.append("## Action Items")
             lines.append("")
             for item in summary.actionItems {
-                lines.append("- [ ] \(item)")
+                lines.append("- [ ] \(item)\(suffix)")
             }
             lines.append("")
         }

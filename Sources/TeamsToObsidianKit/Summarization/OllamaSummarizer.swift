@@ -40,10 +40,12 @@ final class OllamaSummarizer: Summarizer {
         let message: Message
     }
 
-    func summarize(transcript: String, meetingDate: Date, durationSeconds: Int) async throws -> MeetingSummary {
+    func summarize(transcript: String, meetingDate: Date, durationSeconds: Int,
+                   context: MeetingContext?) async throws -> MeetingSummary {
         let text = try await chat(
             system: prompts.systemPrompt(),
-            user: prompts.userPrompt(transcript: transcript, meetingDate: meetingDate, durationSeconds: durationSeconds))
+            user: prompts.userPrompt(transcript: transcript, meetingDate: meetingDate,
+                                     durationSeconds: durationSeconds, context: context))
         return SummaryParser.parse(text, meetingDate: meetingDate)
     }
 
