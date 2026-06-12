@@ -61,6 +61,50 @@ jobs:
           name: TeamsToObsidian.app
           path: dist/TeamsToObsidian.app.zip
 
+  # Real whisper.cpp (tiny.en) + stub Ollama + assertions on the produced
+  # note — the automatable part of the README's verification ladder. Capture
+  # and detection can't run here (no TCC grants / audio devices on runners).
+  e2e:
+    name: End-to-end pipeline (macOS)
+    needs: [build]
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v5
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            swiftpm-${{ runner.os }}-
+
+      - name: Cache whisper.cpp
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/teams-to-obsidian/whisper.cpp
+          key: whisper-${{ runner.os }}-tiny.en-1
+
+      - name: Build
+        run: make build
+
+      - name: Set up whisper.cpp (tiny.en)
+        run: TTO_WHISPER_MODEL=tiny.en ./scripts/setup-whisper.sh
+
+      - name: Run end-to-end pipeline test
+        run: ./scripts/ci/e2e-pipeline-test.sh
+
+  lint-scripts:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: ShellCheck (errors only)
+        run: shellcheck --severity=error scripts/*.sh scripts/ci/*.sh
+
   # SLSA Build L3 provenance for the zipped app bundle, generated in the
   # isolated reusable workflow and uploaded as <name>.intoto.jsonl. Verify a
   # downloaded artifact with slsa-verifier:

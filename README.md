@@ -186,6 +186,15 @@ needs its own grants (menu → Request Permissions…).
 
 ## Verifying the install
 
+> CI already covers part of this ladder on every push: unit tests (parsers,
+> merger, speaker labeling, renderer, config↔example sync, orphan recovery)
+> plus an end-to-end job that transcribes spoken test audio with a real
+> whisper.cpp build, summarizes via a stub Ollama server, and asserts on the
+> produced note (`scripts/ci/e2e-pipeline-test.sh` — also runnable locally).
+> What CI **cannot** cover — and what the steps below verify — is everything
+> touching capture: hosted runners have no audio devices and cannot grant the
+> Microphone / System Audio Recording / Accessibility permissions.
+
 1. **Offline pipeline** (no permissions needed):
    ```sh
    say -o me.aiff "Action item: I will send the budget report on Friday."

@@ -35,4 +35,15 @@ final class MeetingContextTests: XCTestCase {
         XCTAssertFalse(prompt.contains("Participants:"))
         XCTAssertTrue(prompt.contains("Transcript:\nhello"))
     }
+
+    func testTranscriptTailIsKeptOnTruncation() {
+        var cfg = Config.Summarizer()
+        cfg.maxTranscriptChars = 1_000
+        let prompts = PromptBuilder(config: cfg)
+        let transcript = "AAHEAD " + String(repeating: "x", count: 5_000) + " ZZTAIL"
+        let prompt = prompts.userPrompt(transcript: transcript, meetingDate: Date(), durationSeconds: 60)
+        XCTAssertTrue(prompt.contains("ZZTAIL"), "the tail carries the action items — it must survive")
+        XCTAssertFalse(prompt.contains("AAHEAD"))
+        XCTAssertTrue(prompt.contains("[transcript truncated"))
+    }
 }
