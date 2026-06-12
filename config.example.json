@@ -1,0 +1,42 @@
+{
+  "capture": {
+    "captureMode": "processTap",
+    "micVoiceProcessing": false
+  },
+  "detection": {
+    "bundleIDPrefixes": ["com.microsoft.teams2"],
+    "endDebounceSeconds": 10,
+    "minMeetingDurationSeconds": 60,
+    "pollIntervalSeconds": 2,
+    "startDebounceSeconds": 3,
+    "useOutputSignal": false
+  },
+  "recording": {
+    "directory": "~/Library/Application Support/teams-to-obsidian/recordings",
+    "keepAudio": false
+  },
+  "summarizer": {
+    "backend": "bedrock",
+    "bedrock": {
+      "maxTokens": 4096,
+      "modelID": "anthropic.claude-opus-4-8",
+      "region": "us-east-1"
+    },
+    "maxTranscriptChars": 200000,
+    "ollama": {
+      "baseURL": "http://localhost:11434",
+      "model": "llama3.1"
+    }
+  },
+  "vault": {
+    "filenameTemplate": "{date} {title}",
+    "notesFolder": "Meetings",
+    "path": "~/Documents/ObsidianVault"
+  },
+  "whisper": {
+    "cliPath": "~/.local/share/teams-to-obsidian/whisper.cpp/build/bin/whisper-cli",
+    "language": "en",
+    "modelPath": "~/.local/share/teams-to-obsidian/whisper.cpp/models/ggml-large-v3-turbo-q5_0.bin",
+    "threads": 0
+  }
+}
