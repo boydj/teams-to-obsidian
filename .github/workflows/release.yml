@@ -44,13 +44,20 @@ jobs:
       - name: Assemble and ad-hoc sign app bundle
         run: make sign
 
-      - name: Zip app bundle (versioned)
-        run: ditto -c -k --keepParent dist/TeamsToObsidian.app "dist/TeamsToObsidian-${{ github.ref_name }}.app.zip"
+      # DMG with a drag-to-/Applications symlink — the standard install flow,
+      # and the artifact a notarization ticket can be stapled to later.
+      - name: Package app into DMG
+        run: |
+          STAGE="$(mktemp -d)"
+          cp -R dist/TeamsToObsidian.app "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "TeamsToObsidian" -srcfolder "$STAGE" -ov -format UDZO \
+            "dist/TeamsToObsidian-${{ github.ref_name }}.dmg"
 
       # Base64-encoded sha256 of the release asset, consumed by the SLSA generator.
       - name: Compute artifact digest
         id: hash
-        run: echo "hashes=$(cd dist && shasum -a 256 "TeamsToObsidian-${{ github.ref_name }}.app.zip" | base64)" >> "$GITHUB_OUTPUT"
+        run: echo "hashes=$(cd dist && shasum -a 256 "TeamsToObsidian-${{ github.ref_name }}.dmg" | base64)" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release and upload asset
         env:
@@ -59,12 +66,12 @@ jobs:
         run: |
           gh release view "$TAG" >/dev/null 2>&1 \
             || gh release create "$TAG" --title "TeamsToObsidian $TAG" --generate-notes
-          gh release upload "$TAG" "dist/TeamsToObsidian-$TAG.app.zip" --clobber
+          gh release upload "$TAG" "dist/TeamsToObsidian-$TAG.dmg" --clobber
 
   # SLSA Build L3 provenance, attached permanently to the release
   # (upload-assets) so artifacts stay verifiable after CI retention expires:
-  #   slsa-verifier verify-artifact TeamsToObsidian-<tag>.app.zip \
-  #     --provenance-path TeamsToObsidian-<tag>.app.zip.intoto.jsonl \
+  #   slsa-verifier verify-artifact TeamsToObsidian-<tag>.dmg \
+  #     --provenance-path TeamsToObsidian-<tag>.dmg.intoto.jsonl \
   #     --source-uri github.com/boydj/teams-to-obsidian \
   #     --source-tag <tag>
   provenance:
@@ -77,6 +84,6 @@ jobs:
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build.outputs.hashes }}
-      provenance-name: TeamsToObsidian-${{ github.ref_name }}.app.zip.intoto.jsonl
+      provenance-name: TeamsToObsidian-${{ github.ref_name }}.dmg.intoto.jsonl
       upload-assets: true
       private-repository: true   # no-op while public; required ack if ever private

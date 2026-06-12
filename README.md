@@ -197,22 +197,25 @@ are discarded by design (`detection.minMeetingDurationSeconds`).
 ## Releases
 
 Pushing a `v*` tag (`git tag v0.1.0 && git push origin v0.1.0`) runs the
-release workflow: build + tests, then a GitHub Release with two assets —
-`TeamsToObsidian-<tag>.app.zip` and its SLSA Build L3 provenance
-`...app.zip.intoto.jsonl` (attached permanently, unlike per-push CI artifacts).
-Verify a download with [slsa-verifier](https://github.com/slsa-framework/slsa-verifier):
+release workflow: build + tests, then a GitHub Release with two assets — a
+`TeamsToObsidian-<tag>.dmg` (mount, drag to Applications) and its SLSA Build
+L3 provenance `...dmg.intoto.jsonl` (attached permanently, unlike per-push CI
+artifacts). Verify a download with
+[slsa-verifier](https://github.com/slsa-framework/slsa-verifier):
 
 ```sh
-slsa-verifier verify-artifact TeamsToObsidian-v0.1.0.app.zip \
-  --provenance-path TeamsToObsidian-v0.1.0.app.zip.intoto.jsonl \
+slsa-verifier verify-artifact TeamsToObsidian-v0.1.0.dmg \
+  --provenance-path TeamsToObsidian-v0.1.0.dmg.intoto.jsonl \
   --source-uri github.com/boydj/teams-to-obsidian --source-tag v0.1.0
 ```
 
-Release zips are ad-hoc signed, not notarized — Gatekeeper will quarantine a
-downloaded copy (right-click → Open, or `xattr -d com.apple.quarantine`).
-Building locally with `make install` avoids this and gives TCC a stable
-identity. Notarized releases would need an Apple Developer ID (signing
-certificate + notarytool credentials as Actions secrets).
+The app inside the DMG is ad-hoc signed, not notarized — Gatekeeper will
+quarantine it (right-click → Open the app after copying it to Applications,
+or `xattr -d com.apple.quarantine`). Building locally with `make install`
+avoids this and gives TCC a stable identity. Notarized releases would need an
+Apple Developer ID (signing certificate + notarytool credentials as Actions
+secrets); the DMG is already the right container for that — notarization
+tickets staple to DMGs, which a zip can't do.
 
 ## Development
 
