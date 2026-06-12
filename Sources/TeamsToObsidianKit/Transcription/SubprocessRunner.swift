@@ -2,6 +2,7 @@ import Foundation
 
 struct SubprocessResult {
     let exitCode: Int32
+    let stdout: String
     let stderr: String
     let timedOut: Bool
 }
@@ -9,7 +10,8 @@ struct SubprocessResult {
 /// Runs a child process with a hard timeout, draining stdout/stderr so the
 /// child can never block on a full pipe.
 enum SubprocessRunner {
-    static func run(executable: URL, arguments: [String], timeout: TimeInterval) async throws -> SubprocessResult {
+    static func run(executable: URL, arguments: [String], timeout: TimeInterval,
+                    captureStdout: Bool = false) async throws -> SubprocessResult {
         try await withCheckedThrowingContinuation { continuation in
             let process = Foundation.Process()
             process.executableURL = executable
@@ -20,13 +22,17 @@ enum SubprocessRunner {
             process.standardError = stderrPipe
             process.standardOutput = stdoutPipe
 
-            let collector = DataCollector()
+            let stderrCollector = DataCollector()
+            let stdoutCollector = DataCollector()
             stderrPipe.fileHandleForReading.readabilityHandler = { handle in
-                collector.append(handle.availableData)
+                stderrCollector.append(handle.availableData)
             }
-            // stdout is discarded but must still be drained.
+            // Always drained; only kept when the caller wants it.
             stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
-                _ = handle.availableData
+                let data = handle.availableData
+                if captureStdout {
+                    stdoutCollector.append(data)
+                }
             }
 
             let state = RunState(continuation: continuation)
@@ -35,11 +41,15 @@ enum SubprocessRunner {
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 if let rest = try? stderrPipe.fileHandleForReading.readToEnd() {
-                    collector.append(rest)
+                    stderrCollector.append(rest)
+                }
+                if captureStdout, let rest = try? stdoutPipe.fileHandleForReading.readToEnd() {
+                    stdoutCollector.append(rest)
                 }
                 state.finish(.success(SubprocessResult(
                     exitCode: proc.terminationStatus,
-                    stderr: collector.string(),
+                    stdout: stdoutCollector.string(),
+                    stderr: stderrCollector.string(),
                     timedOut: state.timedOutFlag)))
             }
 

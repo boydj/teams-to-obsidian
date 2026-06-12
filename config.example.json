@@ -4,7 +4,9 @@
     "micVoiceProcessing": false
   },
   "context": {
+    "activeSpeakerPattern": "(?i)^(.+?),?\\s+(?:is\\s+)?speaking\\b",
     "calendarNames": [],
+    "captureActiveSpeakers": false,
     "useCalendar": true,
     "useWindowTitle": true
   },
@@ -15,6 +17,14 @@
     "pollIntervalSeconds": 2,
     "startDebounceSeconds": 3,
     "useOutputSignal": false
+  },
+  "diarization": {
+    "binaryPath": "~/.local/share/teams-to-obsidian/sherpa-onnx/bin/sherpa-onnx-offline-speaker-diarization",
+    "clusterThreshold": 0.5,
+    "embeddingModelPath": "~/.local/share/teams-to-obsidian/sherpa-onnx/nemo_en_titanet_small.onnx",
+    "enabled": false,
+    "numSpeakers": 0,
+    "segmentationModelPath": "~/.local/share/teams-to-obsidian/sherpa-onnx/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"
   },
   "notifications": {
     "enabled": true

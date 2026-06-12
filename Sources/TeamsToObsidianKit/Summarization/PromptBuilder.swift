@@ -11,8 +11,9 @@ struct PromptBuilder {
 
     static let defaultSystemPrompt = """
     You summarize Microsoft Teams meeting transcripts. In the transcript, segments \
-    labeled "Me" were spoken by the local user; segments labeled "Them" were spoken \
-    by other participants (possibly several different people).
+    labeled "Me" were spoken by the local user. Other segments may carry a real \
+    participant name, a generic "Speaker 1"/"Speaker 2" label (same number = same \
+    voice), or "Them" when the speaker is unknown.
 
     When a participant list is provided, use those real names in the summary and \
     action items instead of "Them" wherever the speaker can be identified.

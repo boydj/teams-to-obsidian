@@ -1,48 +1,62 @@
 import Foundation
 
-enum Speaker: String {
-    case me = "Me"
-    case them = "Them"
-}
-
-/// Interleaves the mic ("Me") and Teams-output ("Them") transcripts into one
-/// timeline. Pure logic — covered by unit tests.
+/// Interleaves the mic ("Me") and Teams-output transcripts into one timeline.
+/// Remote segments carry per-speaker labels when diarization / active-speaker
+/// capture provided them, otherwise "Them". Pure logic — covered by unit tests.
 enum TranscriptMerger {
+    static let meLabel = "Me"
+    static let themLabel = "Them"
+
     struct Entry: Equatable {
-        let speaker: Speaker
+        let speaker: String
         let startMS: Int
         var endMS: Int
         var text: String
     }
 
+    /// Convenience for unlabeled remote segments (all "Them").
     static func merge(me: [WhisperSegment], them: [WhisperSegment], coalesceGapMS: Int = 1500) -> String {
-        let entries = mergedEntries(me: me, them: them, coalesceGapMS: coalesceGapMS)
+        merge(me: me, labeledThem: them.map { (themLabel, $0) }, coalesceGapMS: coalesceGapMS)
+    }
+
+    static func merge(me: [WhisperSegment],
+                      labeledThem: [(label: String, segment: WhisperSegment)],
+                      coalesceGapMS: Int = 1500) -> String {
+        let entries = mergedEntries(me: me, labeledThem: labeledThem, coalesceGapMS: coalesceGapMS)
         return entries
-            .map { "**\($0.speaker.rawValue)** [\(timestamp($0.startMS))]: \($0.text)" }
+            .map { "**\($0.speaker)** [\(timestamp($0.startMS))]: \($0.text)" }
             .joined(separator: "\n\n")
     }
 
-    static func mergedEntries(me: [WhisperSegment], them: [WhisperSegment], coalesceGapMS: Int = 1500) -> [Entry] {
-        var tagged: [(speaker: Speaker, segment: WhisperSegment)] =
-            me.map { (.me, $0) } + them.map { (.them, $0) }
+    static func mergedEntries(me: [WhisperSegment], them: [WhisperSegment],
+                              coalesceGapMS: Int = 1500) -> [Entry] {
+        mergedEntries(me: me, labeledThem: them.map { (themLabel, $0) }, coalesceGapMS: coalesceGapMS)
+    }
+
+    static func mergedEntries(me: [WhisperSegment],
+                              labeledThem: [(label: String, segment: WhisperSegment)],
+                              coalesceGapMS: Int = 1500) -> [Entry] {
+        var tagged: [(label: String, segment: WhisperSegment)] =
+            me.map { (meLabel, $0) } + labeledThem
         tagged = tagged.filter { isMeaningful($0.segment.text) }
         // Deterministic ordering (Swift's sort is not guaranteed stable).
         tagged.sort { a, b in
             if a.segment.startMS != b.segment.startMS { return a.segment.startMS < b.segment.startMS }
             if a.segment.endMS != b.segment.endMS { return a.segment.endMS < b.segment.endMS }
-            return a.speaker == .me && b.speaker == .them
+            if a.label != b.label { return a.label == meLabel || (b.label != meLabel && a.label < b.label) }
+            return false
         }
 
         var entries: [Entry] = []
-        for (speaker, segment) in tagged {
+        for (label, segment) in tagged {
             if var last = entries.last,
-               last.speaker == speaker,
+               last.speaker == label,
                segment.startMS - last.endMS < coalesceGapMS {
                 last.text += " " + segment.text
                 last.endMS = max(last.endMS, segment.endMS)
                 entries[entries.count - 1] = last
             } else {
-                entries.append(Entry(speaker: speaker,
+                entries.append(Entry(speaker: label,
                                      startMS: segment.startMS,
                                      endMS: segment.endMS,
                                      text: segment.text))

@@ -92,6 +92,22 @@ final class MeetingPipeline {
             }
         }
 
+        // 2b. Speaker labels for the remote channel: diarization clusters
+        // ("Speaker N") plus any active-speaker names captured live from the
+        // Teams UI. Failures degrade to plain "Them" — never fatal.
+        var diarizationTurns: [SpeakerInterval] = []
+        if config.diarization.enabled, !themSegments.isEmpty {
+            do {
+                let turns = try await SpeakerDiarizer(config: config.diarization)
+                    .diarize(wav: session.systemWAVURL)
+                diarizationTurns = SpeakerLabeler.shift(turns, byMS: meta.systemStartOffsetMS ?? 0)
+            } catch {
+                Log.error("Diarization failed: \(describeError(error))")
+                channelWarnings.append("Speaker diarization failed (transcript falls back to \"Them\"): \(describeError(error))")
+            }
+        }
+        let activeSpeakers = ActiveSpeakerLog.load(from: session.directory)
+
         let transcriptionFailed = channelsPresent > 0 && channelsTranscribed == 0
         let transcriptionDegraded = channelsTranscribed < channelsPresent
 
@@ -118,7 +134,11 @@ final class MeetingPipeline {
             return PipelineOutcome(noteURL: noteURL, errorMessage: message)
         }
 
-        let transcript = TranscriptMerger.merge(me: meSegments, them: themSegments)
+        let labeledThem = SpeakerLabeler.label(
+            themSegments: themSegments,
+            diarization: diarizationTurns,
+            activeSpeakers: activeSpeakers)
+        let transcript = TranscriptMerger.merge(me: meSegments, labeledThem: labeledThem)
         let context = MeetingContext(
             title: meta.eventTitle,
             attendees: meta.attendees ?? [],

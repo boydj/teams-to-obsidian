@@ -155,6 +155,13 @@ struct Config: Codable {
         /// Fall back to the Teams meeting window title (needs the
         /// Accessibility permission).
         var useWindowTitle: Bool = true
+        /// EXPERIMENTAL: poll the Teams UI for the active speaker while
+        /// recording, so transcript segments get real names. Needs the
+        /// Accessibility permission; tune with `speakers-test --dump`.
+        var captureActiveSpeakers: Bool = false
+        /// Regex applied to Teams accessibility strings; capture group 1 is
+        /// the speaker name.
+        var activeSpeakerPattern: String = ActiveSpeakerObserver.defaultPattern
 
         init() {}
         init(from decoder: Decoder) throws {
@@ -162,6 +169,32 @@ struct Config: Codable {
             useCalendar = c.decodeOr(Bool.self, .useCalendar, useCalendar)
             calendarNames = c.decodeOr([String].self, .calendarNames, calendarNames)
             useWindowTitle = c.decodeOr(Bool.self, .useWindowTitle, useWindowTitle)
+            captureActiveSpeakers = c.decodeOr(Bool.self, .captureActiveSpeakers, captureActiveSpeakers)
+            activeSpeakerPattern = c.decodeOr(String.self, .activeSpeakerPattern, activeSpeakerPattern)
+        }
+    }
+
+    struct Diarization: Codable {
+        /// Split the Teams-output channel into "Speaker 1/2/3" turns with
+        /// sherpa-onnx (fully local). Run scripts/setup-diarization.sh first.
+        var enabled: Bool = false
+        var binaryPath: String = "~/.local/share/teams-to-obsidian/sherpa-onnx/bin/sherpa-onnx-offline-speaker-diarization"
+        var segmentationModelPath: String = "~/.local/share/teams-to-obsidian/sherpa-onnx/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"
+        var embeddingModelPath: String = "~/.local/share/teams-to-obsidian/sherpa-onnx/nemo_en_titanet_small.onnx"
+        /// Number of remote speakers when known; 0 = auto (threshold clustering).
+        var numSpeakers: Int = 0
+        /// Auto-clustering sensitivity; smaller splits more aggressively.
+        var clusterThreshold: Double = 0.5
+
+        init() {}
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            enabled = c.decodeOr(Bool.self, .enabled, enabled)
+            binaryPath = c.decodeOr(String.self, .binaryPath, binaryPath)
+            segmentationModelPath = c.decodeOr(String.self, .segmentationModelPath, segmentationModelPath)
+            embeddingModelPath = c.decodeOr(String.self, .embeddingModelPath, embeddingModelPath)
+            numSpeakers = c.decodeOr(Int.self, .numSpeakers, numSpeakers)
+            clusterThreshold = c.decodeOr(Double.self, .clusterThreshold, clusterThreshold)
         }
     }
 
@@ -200,6 +233,7 @@ struct Config: Codable {
     var capture: Capture = Capture()
     var context: Context = Context()
     var notifications: Notifications = Notifications()
+    var diarization: Diarization = Diarization()
 
     init() {}
     init(from decoder: Decoder) throws {
@@ -212,6 +246,7 @@ struct Config: Codable {
         capture = c.decodeOr(Capture.self, .capture, capture)
         context = c.decodeOr(Context.self, .context, context)
         notifications = c.decodeOr(Notifications.self, .notifications, notifications)
+        diarization = c.decodeOr(Diarization.self, .diarization, diarization)
     }
 }
 

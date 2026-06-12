@@ -158,6 +158,14 @@ final class AppController {
             startWatchdog(for: recording)
             installDeviceChangeObserver(for: recording)
             captureContext(for: recording)
+            if config.context.captureActiveSpeakers {
+                let observer = ActiveSpeakerObserver(
+                    pattern: config.context.activeSpeakerPattern,
+                    anchor: session.meta.startedAt,
+                    outputURL: ActiveSpeakerLog.url(in: session.directory))
+                observer.start()
+                recording.speakerObserver = observer
+            }
         } catch {
             store.set(.error("Could not start recording: \(describeError(error))"))
         }
@@ -206,6 +214,8 @@ final class AppController {
         recording.watchdog = nil
         recording.deviceObserver?.invalidate()
         recording.deviceObserver = nil
+        recording.speakerObserver?.stop()
+        recording.speakerObserver = nil
         recording.mic?.stop()
         recording.tap?.stop()
         recording.micWriter.finalize()
@@ -367,6 +377,7 @@ final class ActiveRecording {
     var tap: ProcessTapRecorder?
     var watchdog: Timer?
     var deviceObserver: CoreAudioPropertyObserver?
+    var speakerObserver: ActiveSpeakerObserver?
     var watchdogRebuilt = false
 
     init(session: RecordingSession, micWriter: WAVWriter, systemWriter: WAVWriter) {

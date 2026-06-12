@@ -22,7 +22,8 @@ whisper.cpp and a model (github.com + huggingface.co) — that's it.
    Teams audio is captured — not your music or notification sounds.
 3. **Transcribe** — when the meeting ends, each channel runs through
    `whisper-cli` (Metal-accelerated), then the two are merged into a single
-   timeline labeled **Me** / **Them**.
+   timeline labeled **Me** / **Them** — or with per-speaker labels when
+   speaker identification is enabled (below).
 4. **Summarize** — the transcript goes to your configured model: AWS Bedrock
    (Converse API — any Bedrock model ID works) or local Ollama.
 5. **Write** — a note lands in your vault. If summarization fails, the note is
@@ -100,6 +101,10 @@ optional — missing keys keep their defaults):
 | `context.calendarNames` | _(all)_ | Restrict the calendar lookup to these calendar names |
 | `context.useWindowTitle` | `true` | Fall back to the Teams meeting window title (Accessibility) |
 | `notifications.enabled` | `true` | "Note ready" notification; clicking opens the note in Obsidian |
+| `diarization.enabled` | `false` | Local speaker separation (Speaker 1/2/3) — run `scripts/setup-diarization.sh` first |
+| `diarization.numSpeakers` | `0` | Remote speaker count when known; 0 = auto-cluster |
+| `context.captureActiveSpeakers` | `false` | EXPERIMENTAL: poll Teams' UI for the active speaker to put real names on segments |
+| `context.activeSpeakerPattern` | `"<Name>, speaking"` regex | Tune with `speakers-test --dump` |
 | `whisper.cliPath` / `modelPath` | setup-whisper.sh locations | whisper-cli binary and ggml model |
 | `whisper.language` | `en` | Whisper language, or `auto` |
 | `summarizer.backend` | `bedrock` | `bedrock` or `ollama` |
@@ -120,6 +125,45 @@ accuracy at ~8× speed — comfortably faster than real time on any M-series Mac
 and worth it for compressed multi-speaker meeting audio. Low-RAM alternative:
 `TTO_WHISPER_MODEL=small.en make whisper` (then update `whisper.modelPath`).
 
+## Speaker names in transcripts
+
+Teams delivers one mixed stream for all remote participants, so naming
+speakers is two stacked features:
+
+**1. Diarization (`diarization.enabled`)** — fully local speaker separation
+via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (pyannote
+segmentation + embedding clustering), run on the Teams channel after each
+meeting. Remote segments become `**Speaker 1**`, `**Speaker 2**`, … with
+consistent identities. One-time setup (downloads the binary + two models from
+GitHub, ~100 MB):
+
+```sh
+scripts/setup-diarization.sh    # then set diarization.enabled: true
+```
+
+Set `diarization.numSpeakers` when you know the count (more accurate);
+`0` auto-clusters via `clusterThreshold`.
+
+**2. Active-speaker capture (`context.captureActiveSpeakers`, experimental)** —
+while recording, the app polls the Teams accessibility tree once a second for
+"who is speaking" indicators and logs named time intervals. The pipeline then
+votes each diarization cluster to a real name (a cluster whose airtime
+coincides with "Sarah was speaking" becomes **Sarah** everywhere, even where
+the UI capture missed). Because this depends on what Teams exposes via
+Accessibility, validate it on your Teams build first — during a real meeting:
+
+```sh
+teams-to-obsidian speakers-test --dump --seconds 30   # see what Teams exposes
+teams-to-obsidian speakers-test --seconds 30          # test the match pattern
+```
+
+If `--dump` shows a different speaking indicator than `"<Name>, speaking"`,
+set `context.activeSpeakerPattern` (regex; capture group 1 = name), then flip
+`captureActiveSpeakers` to `true`. Without diarization, captured names still
+label the segments they directly overlap; without capture, you keep
+Speaker 1/2/3. The summarizer is told about all three label kinds and uses
+the attendee list to name people in the summary where it can.
+
 ## CLI
 
 The same binary doubles as a CLI (`.build/release/teams-to-obsidian`, or
@@ -132,6 +176,8 @@ teams-to-obsidian process --mic me.wav --system them.wav [--title "Weekly sync"]
                                        # full pipeline on existing audio — no meeting needed
 teams-to-obsidian test-summarizer [--backend bedrock|ollama]
 teams-to-obsidian record-test --seconds 10 [--bundle-id com.apple.Music] [--mic-only|--system-only] [--global]
+teams-to-obsidian speakers-test --seconds 30 [--dump] [--pattern REGEX]
+                                       # probe Teams' active-speaker indicators (run during a meeting)
 ```
 
 Note: when CLI subcommands trigger permission prompts, macOS attributes the

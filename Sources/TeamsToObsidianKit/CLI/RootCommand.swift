@@ -27,6 +27,7 @@ struct RootCommand: AsyncParsableCommand {
             ProcessCommand.self,
             TestSummarizerCommand.self,
             RecordTestCommand.self,
+            SpeakersTestCommand.self,
             InitConfigCommand.self,
         ],
         defaultSubcommand: RunCommand.self)
