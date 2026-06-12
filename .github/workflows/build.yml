@@ -8,19 +8,24 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build & test (macOS)
     # Apple Silicon runner; the project targets macOS 14.4+.
     runs-on: macos-15
     timeout-minutes: 60
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # aws-sdk-swift is a large dependency tree — caching .build and the
       # SwiftPM cache cuts rebuilds from ~20 minutes to ~2.
       - name: Cache SwiftPM
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .build
@@ -44,8 +49,35 @@ jobs:
       - name: Zip app bundle
         run: ditto -c -k --keepParent dist/TeamsToObsidian.app dist/TeamsToObsidian.app.zip
 
+      # Base64-encoded sha256 of the artifact, consumed by the SLSA generator.
+      # (BSD shasum/base64 on macOS: same "hash  name" format, no line wrapping.)
+      - name: Compute artifact digest
+        id: hash
+        run: echo "hashes=$(cd dist && shasum -a 256 TeamsToObsidian.app.zip | base64)" >> "$GITHUB_OUTPUT"
+
       - name: Upload app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: TeamsToObsidian.app
           path: dist/TeamsToObsidian.app.zip
+
+  # SLSA Build L3 provenance for the zipped app bundle, generated in the
+  # isolated reusable workflow and uploaded as <name>.intoto.jsonl. Verify a
+  # downloaded artifact with slsa-verifier:
+  #   slsa-verifier verify-artifact TeamsToObsidian.app.zip \
+  #     --provenance-path TeamsToObsidian.app.zip.intoto.jsonl \
+  #     --source-uri github.com/boydj/teams-to-obsidian
+  provenance:
+    name: SLSA provenance
+    needs: [build]
+    permissions:
+      actions: read      # read the workflow path
+      id-token: write    # sign the provenance via Sigstore
+      contents: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.build.outputs.hashes }}
+      provenance-name: TeamsToObsidian.app.zip.intoto.jsonl
+      # This repo is private: signing publishes the repo NAME (not contents)
+      # to the public Rekor transparency log. This flag is the explicit opt-in.
+      private-repository: true
