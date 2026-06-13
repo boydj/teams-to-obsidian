@@ -314,6 +314,13 @@ final class AppController {
         case .failed(let message):
             if !recordingNow { store.set(.error(message)) }
         case .discarded:
+            // The meeting was under the minimum length and was dropped — tell
+            // the user so "no note appeared" isn't a silent mystery.
+            NoteNotifier.shared.notifyMessage(
+                title: "No note created",
+                body: "That meeting was under the \(Int(config.detection.minMeetingDurationSeconds))s minimum. "
+                    + "Adjust detection.minMeetingDurationSeconds in the config if that's too long.",
+                enabled: config.notifications.enabled)
             if !recordingNow { store.set(.idle) }
         }
     }

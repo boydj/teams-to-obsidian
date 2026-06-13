@@ -99,10 +99,29 @@ final class StatusItemController: NSObject {
     @objc private func requestPermissions() {
         Task { @MainActor in
             let report = await PermissionRequester.requestAll()
+            // Accessory (menu-bar-only) apps don't take focus, so a modal alert
+            // opens behind everything and looks like nothing happened. Activate
+            // first so the result is actually visible.
+            NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
             alert.messageText = "Permissions"
-            alert.informativeText = report
-            alert.runModal()
+            alert.informativeText = report + "\n\nmacOS only shows each prompt once. "
+                + "If something is missing, enable TeamsToObsidian in System Settings, "
+                + "then quit and reopen the app."
+            alert.addButton(withTitle: "Open Screen & System Audio Recording")
+            alert.addButton(withTitle: "Open Microphone")
+            alert.addButton(withTitle: "Close")
+            switch alert.runModal() {
+            case .alertFirstButtonReturn: Self.openPrivacyPane("Privacy_ScreenCapture")
+            case .alertSecondButtonReturn: Self.openPrivacyPane("Privacy_Microphone")
+            default: break
+            }
+        }
+    }
+
+    private static func openPrivacyPane(_ anchor: String) {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)") {
+            NSWorkspace.shared.open(url)
         }
     }
 
