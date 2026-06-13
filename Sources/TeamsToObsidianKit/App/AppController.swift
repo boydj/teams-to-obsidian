@@ -37,6 +37,18 @@ final class AppController {
     }
 
     func start() {
+        // Microphone and system-audio recording can only be requested from a
+        // real .app bundle (the Info.plist usage strings + bundle identity are
+        // what let macOS prompt and list the app under Privacy & Security).
+        // A bare binary detects meetings but can never record — warn loudly.
+        if Bundle.main.bundleURL.pathExtension != "app" {
+            let message = "Running as a bare binary — mic and system-audio recording won't work and "
+                + "the app won't appear under Privacy & Security. Build and run the bundle: "
+                + "`make install` then open /Applications/TeamsToObsidian.app."
+            Log.error(message)
+            store.set(.error(message))
+        }
+
         if let configProblem {
             store.set(.error(configProblem))
         }
