@@ -22,10 +22,14 @@ enum PermissionRequester {
 
         var lines: [String] = []
 
+        let micBefore = AVCaptureDevice.authorizationStatus(for: .audio)
+        Log.info("Microphone authorization before request: \(describe(micBefore)).")
         let micGranted = await AVCaptureDevice.requestAccess(for: .audio)
+        let micAfter = AVCaptureDevice.authorizationStatus(for: .audio)
+        Log.info("Microphone requestAccess returned \(micGranted); status now \(describe(micAfter)).")
         lines.append(micGranted
             ? "Microphone: granted ✓"
-            : "Microphone: denied — enable it in System Settings → Privacy & Security → Microphone.")
+            : "Microphone: \(describe(micAfter)) — enable it in System Settings → Privacy & Security → Microphone.")
 
         // A 2-second throwaway global tap forces the "System Audio Recording
         // Only" prompt without needing Teams to be running.
@@ -39,8 +43,10 @@ enum PermissionRequester {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             tap.stop()
             writer.finalize()
+            Log.info("System audio probe: tap started and captured without error.")
             lines.append("System audio recording: working ✓")
         } catch {
+            Log.error("System audio probe failed: \(describeError(error))")
             lines.append("System audio recording: not working — grant it in System Settings → "
                 + "Privacy & Security → Screen & System Audio Recording (System Audio Recording Only). "
                 + "(\(describeError(error)))")
@@ -67,6 +73,17 @@ enum PermissionRequester {
             ? "Notifications: granted ✓"
             : "Notifications: not enabled — you won't be told when notes are ready.")
 
+        Log.info("Request Permissions finished.")
         return lines.joined(separator: "\n")
+    }
+
+    private static func describe(_ status: AVAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "not determined"
+        case .restricted: return "restricted"
+        case .denied: return "denied"
+        case .authorized: return "authorized"
+        @unknown default: return "unknown(\(status.rawValue))"
+        }
     }
 }

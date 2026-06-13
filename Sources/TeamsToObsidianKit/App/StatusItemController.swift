@@ -98,10 +98,16 @@ final class StatusItemController: NSObject {
 
     @objc private func requestPermissions() {
         Task { @MainActor in
+            Log.info("Request Permissions invoked.")
+            // Accessory apps never take focus, which can keep the system TCC
+            // prompt (and our result alert) from coming forward. Become a
+            // regular foreground app for the duration, then restore.
+            let previousPolicy = NSApp.activationPolicy()
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
+            defer { NSApp.setActivationPolicy(previousPolicy) }
+
             let report = await PermissionRequester.requestAll()
-            // Accessory (menu-bar-only) apps don't take focus, so a modal alert
-            // opens behind everything and looks like nothing happened. Activate
-            // first so the result is actually visible.
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
             alert.messageText = "Permissions"
