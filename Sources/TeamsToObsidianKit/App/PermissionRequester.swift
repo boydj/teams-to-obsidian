@@ -5,6 +5,12 @@ import Foundation
 
 @MainActor
 enum PermissionRequester {
+    /// True on first run (mic permission never requested) — used to fire the
+    /// prompts automatically at launch instead of relying on a menu click.
+    static func microphoneUndetermined() -> Bool {
+        AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined
+    }
+
     /// Triggers the TCC prompts proactively so they appear at install time,
     /// not mid-meeting. Microphone and System Audio Recording are required;
     /// Calendar, Accessibility, and Notifications enrich notes and are optional.

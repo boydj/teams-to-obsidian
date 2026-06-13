@@ -75,6 +75,21 @@ final class AppController {
         }
 
         installWorkspaceObservers()
+
+        // First run: fire the TCC prompts automatically so the user doesn't
+        // have to find the menu item. Only when bundled (a bare binary can't)
+        // and only when the mic permission has never been decided, so this
+        // never nags after the first grant/deny.
+        if Bundle.main.bundleURL.pathExtension == "app", PermissionRequester.microphoneUndetermined() {
+            Log.info("First launch with undetermined permissions — requesting automatically.")
+            Task { @MainActor in
+                let previousPolicy = NSApp.activationPolicy()
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
+                _ = await PermissionRequester.requestAll()
+                NSApp.setActivationPolicy(previousPolicy)
+            }
+        }
     }
 
     /// Called from applicationWillTerminate: make the WAVs valid so orphan
