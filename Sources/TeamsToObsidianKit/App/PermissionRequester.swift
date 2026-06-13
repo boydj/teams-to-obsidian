@@ -10,6 +10,16 @@ enum PermissionRequester {
     /// Calendar, Accessibility, and Notifications enrich notes and are optional.
     /// Returns a short human-readable report.
     static func requestAll() async -> String {
+        // On a bare binary there's no Info.plist, so requesting the microphone
+        // doesn't just fail — macOS terminates the process for accessing a
+        // privacy-sensitive API without a usage description. Bail with guidance
+        // rather than crash.
+        guard Bundle.main.bundleURL.pathExtension == "app" else {
+            return "TeamsToObsidian is running as a bare binary, so macOS will not grant it "
+                + "permissions (and may kill it if it asks). Run `make install` and open "
+                + "/Applications/TeamsToObsidian.app, then use Request Permissions from there."
+        }
+
         var lines: [String] = []
 
         let micGranted = await AVCaptureDevice.requestAccess(for: .audio)
