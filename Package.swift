@@ -14,7 +14,7 @@ let package = Package(
     dependencies: [
         // Pinned exact: BedrockSummarizer uses APIs verified at this version
         // (incl. the deprecated-but-working BedrockRuntimeClientConfiguration).
-        .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "1.7.18"),
+        .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "1.7.58"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     ],
     targets: [
